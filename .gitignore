@@ -1,0 +1,41 @@
+# 本地配置文件
+.env
+.env.local
+.env.*.local
+config/
+settings/
+*.config.js
+*.config.ts
+
+# Lock 文件
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+Gemfile.lock
+composer.lock
+
+# Log 文件
+*.log
+logs/
+
+# 操作系统文件
+.DS_Store
+Thumbs.db
+
+# 临时文件
+*.tmp
+*.temp
+*.swp
+*.swo
+
+# IDE 配置
+.idea/
+.vscode/
+*.code-workspace
+
+# 依赖目录
+node_modules/
+.claude/
+
+# 静态数据
+data/*.json
