@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= title %></title>
+  <link rel='stylesheet' href='/stylesheets/style.css'>
+</head>
+<body>
+  <div class="container">
+    <h1><%= title %></h1>
+
+    <a href="/" class="btn-back">← 返回列表</a>
+
+    <div class="form-section">
+      <form action="/edit/<%= account.id %>" method="POST" id="editForm">
+        <div class="form-row">
+          <div class="form-group">
+            <label>日期 *</label>
+            <input type="date" name="date" required value="<%= account.date %>">
+          </div>
+          <div class="form-group">
+            <label>类型 *</label>
+            <select name="type" id="typeSelect" required>
+              <option value="income" <%= account.type === 'income' ? 'selected' : '' %>>收入</option>
+              <option value="expense" <%= account.type === 'expense' ? 'selected' : '' %>>支出</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row" id="categoryRow" <%= account.type === 'income' ? 'style="display:none;"' : '' %>>
+          <div class="form-group">
+            <label>分类</label>
+            <select name="category" id="categorySelect">
+              <% expenseCategories.forEach(cat => { %>
+                <option value="<%= cat %>" <%= account.category === cat ? 'selected' : '' %>><%= cat %></option>
+              <% }) %>
+              <option value="custom" <%= !expenseCategories.includes(account.category) ? 'selected' : '' %>>自定义...</option>
+            </select>
+          </div>
+          <div class="form-group custom-category-group" <%= !expenseCategories.includes(account.category) ? '' : 'style="display:none;"'%>>
+            <label>自定义分类</label>
+            <input type="text" name="category" id="customCategory" placeholder="输入分类名称" value="<%= !expenseCategories.includes(account.category) ? account.category : '' %>">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>金额 *</label>
+            <input type="number" name="amount" step="0.01" min="0.01" required value="<%= account.amount %>" placeholder="0.00">
+          </div>
+          <div class="form-group">
+            <label>备注</label>
+            <input type="text" name="remark" placeholder="选填" maxlength="200" value="<%= account.remark %>">
+          </div>
+        </div>
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary">保存修改</button>
+          <a href="/" class="btn btn-secondary">取消</a>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    // 类型切换
+    const typeSelect = document.getElementById('typeSelect');
+    const categoryRow = document.getElementById('categoryRow');
+    const categorySelect = document.getElementById('categorySelect');
+    const customGroup = document.querySelector('.custom-category-group');
+    const customCategory = document.getElementById('customCategory');
+
+    function updateCategoryVisibility() {
+      if (typeSelect.value === 'expense') {
+        categoryRow.style.display = 'block';
+      } else {
+        categoryRow.style.display = 'none';
+      }
+    }
+
+    function updateCustomCategory() {
+      if (categorySelect.value === 'custom') {
+        customGroup.style.display = 'block';
+        customCategory.name = 'category';
+      } else {
+        customGroup.style.display = 'none';
+        customCategory.name = '';
+      }
+    }
+
+    typeSelect.addEventListener('change', updateCategoryVisibility);
+    categorySelect.addEventListener('change', updateCustomCategory);
+  </script>
+</body>
+</html>

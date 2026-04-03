@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= title %></title>
+  <link rel='stylesheet' href='/stylesheets/style.css'>
+</head>
+<body>
+  <div class="container">
+    <h1><%= title %></h1>
+
+    <!-- 消息提示 -->
+    <% if (error) { %>
+      <div class="message error"><%= error %></div>
+    <% } %>
+    <% if (success) { %>
+      <div class="message success"><%= success %></div>
+    <% } %>
+
+    <!-- 统计卡片 -->
+    <div class="stats">
+      <div class="stat-card income">
+        <span class="stat-label">总收入</span>
+        <span class="stat-value">¥<%= stats.totalIncome.toFixed(2) %></span>
+      </div>
+      <div class="stat-card expense">
+        <span class="stat-label">总支出</span>
+        <span class="stat-value">¥<%= stats.totalExpense.toFixed(2) %></span>
+      </div>
+      <div class="stat-card balance <%= stats.balance < 0 ? 'negative' : '' %>">
+        <span class="stat-label">余额</span>
+        <span class="stat-value">¥<%= stats.balance.toFixed(2) %></span>
+      </div>
+    </div>
+
+    <!-- 分类统计 -->
+    <% if (Object.keys(categoryStats).length > 0) { %>
+      <div class="category-stats">
+        <h3>支出分类统计</h3>
+        <div class="category-list">
+          <% Object.entries(categoryStats).forEach(([cat, amount]) => { %>
+            <div class="category-item">
+              <span class="category-name"><%= cat %></span>
+              <span class="category-amount">¥<%= amount.toFixed(2) %></span>
+            </div>
+          <% }) %>
+        </div>
+      </div>
+    <% } %>
+
+    <!-- 添加账单表单 -->
+    <div class="form-section">
+      <h2>添加账单</h2>
+      <form action="/add" method="POST" id="addForm">
+        <div class="form-row">
+          <div class="form-group">
+            <label>日期 *</label>
+            <input type="date" name="date" required value="<%= new Date().toISOString().split('T')[0] %>">
+          </div>
+          <div class="form-group">
+            <label>类型 *</label>
+            <select name="type" id="typeSelect" required>
+              <option value="income">收入</option>
+              <option value="expense" selected>支出</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row" id="categoryRow">
+          <div class="form-group">
+            <label>分类</label>
+            <select name="category" id="categorySelect">
+              <% expenseCategories.forEach(cat => { %>
+                <option value="<%= cat %>"><%= cat %></option>
+              <% }) %>
+              <option value="custom">自定义...</option>
+            </select>
+          </div>
+          <div class="form-group custom-category-group" style="display: none;">
+            <label>自定义分类</label>
+            <input type="text" name="customCategory" id="customCategory" placeholder="输入分类名称">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>金额 *</label>
+            <input type="number" name="amount" step="0.01" min="0.01" required placeholder="0.00">
+          </div>
+          <div class="form-group">
+            <label>备注</label>
+            <input type="text" name="remark" placeholder="选填" maxlength="200">
+          </div>
+        </div>
+        <button type="submit" class="btn btn-primary">添加</button>
+      </form>
+    </div>
+
+    <!-- 账单列表 -->
+    <div class="list-section">
+      <h2>账单列表</h2>
+      <% if (accounts.length === 0) { %>
+        <div class="empty">暂无账单记录</div>
+      <% } else { %>
+        <div class="account-list">
+          <% accounts.forEach(account => { %>
+            <div class="account-item <%= account.type %>">
+              <div class="account-left">
+                <div class="account-date"><%= account.date %></div>
+                <div class="account-category">
+                  <%= account.type === 'income' ? '收入' : account.category %>
+                  <% if (account.remark) { %>
+                    <span class="account-remark">(<%= account.remark %>)</span>
+                  <% } %>
+                </div>
+              </div>
+              <div class="account-right">
+                <span class="account-amount <%= account.type %>">
+                  <%= account.type === 'income' ? '+' : '-' %>¥<%= account.amount.toFixed(2) %>
+                </span>
+                <div class="account-actions">
+                  <a href="/edit/<%= account.id %>" class="btn btn-sm btn-edit">编辑</a>
+                  <a href="/delete/<%= account.id %>" class="btn btn-sm btn-delete" onclick="return confirm('确定要删除这条账单吗？');">删除</a>
+                </div>
+              </div>
+            </div>
+          <% }) %>
+        </div>
+      <% } %>
+    </div>
+  </div>
+
+  <script>
+    // 类型切换
+    document.getElementById('typeSelect').addEventListener('change', function() {
+      const categoryRow = document.getElementById('categoryRow');
+      if (this.value === 'expense') {
+        categoryRow.style.display = 'block';
+      } else {
+        categoryRow.style.display = 'none';
+      }
+    });
+
+    // 自定义分类
+    document.getElementById('categorySelect').addEventListener('change', function() {
+      const customGroup = document.querySelector('.custom-category-group');
+      if (this.value === 'custom') {
+        customGroup.style.display = 'block';
+        document.getElementById('customCategory').required = true;
+        document.getElementById('customCategory').name = 'category';
+      } else {
+        customGroup.style.display = 'none';
+        document.getElementById('customCategory').required = false;
+        document.getElementById('customCategory').name = 'customCategory';
+      }
+    });
+  </script>
+</body>
+</html>
