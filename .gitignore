@@ -6,6 +6,8 @@ config/
 settings/
 *.config.js
 *.config.ts
+!account-book/eslint.config.js
+!account-book/jest.config.js
 
 # Lock 文件
 package-lock.json
