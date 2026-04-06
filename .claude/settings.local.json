@@ -1,0 +1,39 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(gh auth:*)",
+      "Bash(git add:*)",
+      "Bash(git commit -m ':*)",
+      "Bash(git push:*)",
+      "Bash(npm install:*)",
+      "Bash(npm run:*)",
+      "Bash(npx eslint:*)",
+      "Bash(npm test:*)",
+      "Bash(ls:*)",
+      "Bash(git status:*)",
+      "Bash(git check-ignore:*)",
+      "Bash(git commit:*)",
+      "Bash(git remote:*)",
+      "Bash(node -e \"import\\('./data/accounts.js'\\).then\\(m => console.log\\('accounts.js loaded:', Object.keys\\(m\\)\\)\\)\")",
+      "Bash(timeout 5 node ./bin/www)",
+      "Bash(node ./bin/www)",
+      "Bash(curl -s http://localhost:3000/)",
+      "Bash(curl -s http://localhost:3000/add -X POST -d \"date=2026-04-06&type=expense&category=餐饮&amount=50&remark=test\" -L)",
+      "Bash(pkill -f \"node ./bin/www\")",
+      "Bash(taskkill //F //IM node.exe)",
+      "Bash(curl -s -X POST http://localhost:3000/add -d \"date=2026-04-06&type=expense&category=餐饮&amount=50&remark=test\" -L)",
+      "Bash(node -e ':*)",
+      "Bash(curl -s -X POST http://localhost:3000/add -d \"date=2026-04-06&type=expense&category=餐饮&amount=50&remark=test\" -w \"\\\\nHTTP Status: %{http_code}\\\\n\")",
+      "Bash(npx skills:*)",
+      "Bash(npx playwright:*)",
+      "Bash(mv tests/e2e __tests__)",
+      "Bash(rmdir tests:*)",
+      "Bash(mkdir -p __tests__)",
+      "Bash(mv tests/e2e/* __tests__/)",
+      "Bash(rmdir tests/e2e)",
+      "Bash(mv __tests__/e2e/* __tests__/)",
+      "Bash(rmdir __tests__/e2e)",
+      "Bash(node -e \"console.log\\(process.cwd\\(\\)\\)\")"
+    ]
+  }
+}

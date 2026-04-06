@@ -240,13 +240,15 @@ router.get('/', async function (req, res, next) {
 |------|------|---------|
 | `__tests__/accounts.test.js` | 单元测试 | 数据层函数 getStats, getCategoryStats |
 | `__tests__/app.test.js` | API 测试 | HTTP 路由 (Supertest) |
+| `__tests__/account.spec.js` | E2E 测试 | 浏览器自动化测试 (Playwright) |
 
 ### 测试命令
 
 ```bash
 cd account-book
-npm test        # 运行所有测试（9 passed, 2 test suites）
-npm start       # 启动服务器
+npm test              # 运行 Jest API 测试
+npx playwright test   # 运行 E2E 测试（自动启动服务器）
+npx playwright show-report  # 查看 HTML 测试报告
 ```
 
 ### Supertest API 测试示例
@@ -270,7 +272,23 @@ describe('API 路由测试', () => {
 });
 ```
 
+### Playwright E2E 测试示例
+
+```javascript
+import { test, expect } from '@playwright/test';
+
+test('添加支出账单', async ({ page }) => {
+  await page.fill('input[name="date"]', '2026-01-15');
+  await page.selectOption('#typeSelect', 'expense');
+  await page.fill('input[name="amount"]', '50.00');
+  await page.click('button[type="submit"]');
+
+  await expect(page.locator('.message.success')).toContainText('添加成功');
+});
+```
+
 ---
 
+*更新时间：2026年04月06日 - 新增 Playwright E2E 测试（15 个测试用例）*
 *更新时间：2026年04月06日 - 新增 Supertest API 测试*
 *更新时间：2026年04月06日 - 更新为 lowdb v7 持久化 + ESM 模块系统*

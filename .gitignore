@@ -4,8 +4,6 @@
 .env.*.local
 config/
 settings/
-*.config.js
-*.config.ts
 !account-book/eslint.config.js
 !account-book/jest.config.js
 
@@ -37,7 +35,12 @@ Thumbs.db
 
 # 依赖目录
 node_modules/
-.claude/
+
+# 测试目录
+test-results/
+playwright-report/
+__tests__/playwright-report/
+__tests__/test-results/
 
 # 静态数据
 data/*.json

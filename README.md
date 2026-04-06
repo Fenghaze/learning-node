@@ -16,11 +16,13 @@
 - Morgan - HTTP 日志中间件
 - Cookie-Parser - Cookie 解析
 - lowdb v7 - JSON 数据库（持久化存储）
-- Jest + Supertest - 测试框架
+- Jest + Supertest - API 测试框架
+- Playwright - E2E 浏览器测试框架
 
 **测试命令：**
 ```bash
-npm test  # 运行所有测试（9 个测试，2 个测试套件）
+npm test              # 运行 Jest API 测试
+npx playwright test   # 运行 E2E 测试（自动启动服务器）
 ```
 
 **模块系统：** ESM（ECMAScript Modules），package.json 中设置 `"type": "module"`

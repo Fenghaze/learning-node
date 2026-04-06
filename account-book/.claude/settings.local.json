@@ -1,0 +1,25 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install:*)",
+      "WebSearch",
+      "Bash(npm list:*)",
+      "Bash(npm search:*)",
+      "Bash(npm view:*)",
+      "Bash(gh auth:*)",
+      "Bash(mkdir -p ~/.claude/skill-sync)",
+      "Bash(mkdir -p ~/.claude/skills/auto-upload-skill)",
+      "Bash(npm init:*)",
+      "Bash(ssh -T git@github.com)",
+      "Bash(node daemon.js)",
+      "Read(//d//**)",
+      "Bash(taskkill /F /IM node.exe)",
+      "Bash(mkdir -p /d/fenghaze)",
+      "Bash(cp -r C:/Users/Administrator/.claude /d/fenghaze/.claude)",
+      "Bash(rm -rf C:/Users/Administrator/.claude)",
+      "Bash(cmd //c \"mklink /D C:\\\\\\\\Users\\\\\\\\Administrator\\\\\\\\.claude D:\\\\\\\\fenghaze\\\\\\\\.claude\")",
+      "Bash(cp:*)",
+      "Bash(rsync:*)"
+    ]
+  }
+}

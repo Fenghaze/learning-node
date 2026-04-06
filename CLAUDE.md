@@ -18,9 +18,12 @@ An Express + EJS-based accounting/bookkeeping application.
 - Morgan - HTTP logging middleware
 - Cookie-Parser - Cookie parsing
 - lowdb v7 - JSON database for persistence
-- Jest + Supertest - Testing
+- Jest + Supertest - API testing
+- Playwright - E2E browser testing
 
-**Testing:** `npm test` runs Jest with Supertest API tests
+**Testing:**
+- `npm test` - Runs Jest API tests
+- `npx playwright test` - Runs E2E tests (auto-starts server)
 
 **Module system:** ESM (ECMAScript Modules) with `"type": "module"` in package.json
 
@@ -55,3 +58,8 @@ Server runs on port 3000 by default.
 - `error.ejs` - Error page
 
 **Static files:** Served from [public/](account-book/public/)
+
+**Tests:** [\_\_tests\_\_/](account-book/__tests__/)
+- `*.test.js` - Jest API tests with Supertest
+- `*.spec.js` - Playwright E2E browser tests
+- `playwright-report/` - HTML test report (view with `npx playwright show-report`)
