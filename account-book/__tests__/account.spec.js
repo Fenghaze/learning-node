@@ -163,4 +163,140 @@ test.describe('账户记账应用 - E2E 测试', () => {
     await expect(page.locator('.container')).toBeVisible();
     await expect(page.locator('#addForm')).toBeVisible();
   });
+
+  // ========== 清除账单功能测试 ==========
+
+  test('清空所有账单', async ({ page }) => {
+    // 1. 添加测试数据
+    const amount1 = '11.' + Date.now().toString().slice(-2);
+    const amount2 = '22.' + Date.now().toString().slice(-2);
+
+    await page.fill('input[name="date"]', '2026-02-01');
+    await page.selectOption('#typeSelect', 'expense');
+    await page.selectOption('#categorySelect', '餐饮');
+    await page.fill('input[name="amount"]', amount1);
+    await page.fill('input[name="remark"]', '清空测试1');
+    await page.click('button[type="submit"]');
+
+    await page.fill('input[name="date"]', '2026-02-02');
+    await page.fill('input[name="amount"]', amount2);
+    await page.fill('input[name="remark"]', '清空测试2');
+    await page.click('button[type="submit"]');
+
+    await expect(page.locator('.message.success')).toContainText('添加成功');
+
+    // 2. 点击"清空所有账单"按钮
+    await page.click('button:has-text("清空所有账单")');
+
+    // 3. 确认对话框
+    await page.evaluate(() => {
+      window.confirm = () => true;
+      document.getElementById('clearAllForm').submit();
+    });
+
+    // 4. 验证所有账单被清空
+    await expect(page.locator('.message.success')).toContainText('已清空所有账单');
+    await expect(page.locator('.empty')).toContainText('暂无账单记录');
+    // 统计数据归零
+    const incomeValue = await page.locator('.stat-card.income .stat-value').textContent();
+    const expenseValue = await page.locator('.stat-card.expense .stat-value').textContent();
+    expect(incomeValue).toContain('0.00');
+    expect(expenseValue).toContain('0.00');
+  });
+
+  test('按条件清除账单', async ({ page }) => {
+    // 1. 添加多条不同类型的账单
+    const uniquePrefix = Date.now().toString().slice(-4);
+
+    // 支出 - 餐饮 - 2026-03-01
+    await page.fill('input[name="date"]', '2026-03-01');
+    await page.selectOption('#typeSelect', 'expense');
+    await page.selectOption('#categorySelect', '餐饮');
+    await page.fill('input[name="amount"]', '31.' + uniquePrefix);
+    await page.fill('input[name="remark"]', '条件清除餐饮');
+    await page.click('button[type="submit"]');
+
+    // 支出 - 交通 - 2026-03-02
+    await page.fill('input[name="date"]', '2026-03-02');
+    await page.selectOption('#typeSelect', 'expense');
+    await page.selectOption('#categorySelect', '交通');
+    await page.fill('input[name="amount"]', '32.' + uniquePrefix);
+    await page.fill('input[name="remark"]', '条件清除交通');
+    await page.click('button[type="submit"]');
+
+    // 收入 - 2026-03-03
+    await page.fill('input[name="date"]', '2026-03-03');
+    await page.selectOption('#typeSelect', 'income');
+    await page.fill('input[name="amount"]', '100.' + uniquePrefix);
+    await page.fill('input[name="remark"]', '条件清除收入');
+    await page.click('button[type="submit"]');
+
+    await expect(page.locator('.message.success')).toContainText('添加成功');
+
+    // 2. 填写筛选条件 - 清除支出类型的账单
+    await page.fill('input[name="startDate"]', '2026-03-01');
+    await page.fill('input[name="endDate"]', '2026-03-31');
+    await page.selectOption('select[name="type"]', 'expense');
+    await page.selectOption('select[name="category"]', 'all');
+
+    // 3. 提交
+    await page.click('button:has-text("清除符合条件的账单")');
+
+    // 4. 验证符合条件的被清除（支出类型的被删除，收入保留）
+    await expect(page.locator('.message.success')).toContainText('已清除 2 条账单');
+    // 应该只剩收入那一条
+    await expect(page.locator('.account-item.income')).toHaveCount(1);
+    await expect(page.locator('.account-item.expense')).toHaveCount(0);
+  });
+
+  test('批量删除账单', async ({ page }) => {
+    // 1. 添加多条账单
+    const uniquePrefix = Date.now().toString().slice(-5);
+
+    await page.fill('input[name="date"]', '2026-04-01');
+    await page.selectOption('#typeSelect', 'expense');
+    await page.selectOption('#categorySelect', '餐饮');
+    await page.fill('input[name="amount"]', '41.' + uniquePrefix);
+    await page.fill('input[name="remark"]', '批量删除1');
+    await page.click('button[type="submit"]');
+
+    await page.fill('input[name="date"]', '2026-04-02');
+    await page.fill('input[name="amount"]', '42.' + uniquePrefix);
+    await page.fill('input[name="remark"]', '批量删除2');
+    await page.click('button[type="submit"]');
+
+    await page.fill('input[name="date"]', '2026-04-03');
+    await page.fill('input[name="amount"]', '43.' + uniquePrefix);
+    await page.fill('input[name="remark"]', '批量删除3');
+    await page.click('button[type="submit"]');
+
+    await page.fill('input[name="date"]', '2026-04-04');
+    await page.fill('input[name="amount"]', '44.' + uniquePrefix);
+    await page.fill('input[name="remark"]', '批量删除4');
+    await page.click('button[type="submit"]');
+
+    await expect(page.locator('.message.success')).toContainText('添加成功');
+    await expect(page.locator('.account-item.expense')).toHaveCount(4);
+
+    // 2. 勾选2-3条账单（第1、3、4条）
+    const checkboxes = page.locator('input[name="ids"]');
+    await checkboxes.nth(0).check();
+    await checkboxes.nth(2).check();
+    await checkboxes.nth(3).check();
+
+    // 3. 点击"删除选中"
+    await page.click('button:has-text("删除选中")');
+
+    // 4. 确认对话框
+    await page.evaluate(() => {
+      window.confirm = () => true;
+      document.getElementById('batchDeleteForm').submit();
+    });
+
+    // 5. 验证选中的被删除，未勾选的保留
+    await expect(page.locator('.message.success')).toContainText('已删除 3 条账单');
+    await expect(page.locator('.account-item.expense')).toHaveCount(1);
+    // 应该只剩第2条
+    await expect(page.locator('.account-item').filter({ hasText: '42.' + uniquePrefix })).toBeVisible();
+  });
 });

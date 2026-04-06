@@ -5,10 +5,16 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title><%= title %></title>
   <link rel='stylesheet' href='/stylesheets/style.css'>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </head>
 <body>
   <div class="container">
     <h1><%= title %></h1>
+
+    <!-- 操作区 -->
+    <div class="action-bar">
+      <a href="/export" class="btn btn-primary">导出 Excel</a>
+    </div>
 
     <!-- 消息提示 -->
     <% if (error) { %>
@@ -34,6 +40,16 @@
       </div>
     </div>
 
+    <!-- 图表区域 -->
+    <div class="chart-container">
+      <div class="chart-wrapper">
+        <canvas id="trendChart"></canvas>
+      </div>
+      <div class="chart-wrapper">
+        <canvas id="categoryChart"></canvas>
+      </div>
+    </div>
+
     <!-- 分类统计 -->
     <% if (Object.keys(categoryStats).length > 0) { %>
       <div class="category-stats">
@@ -48,6 +64,92 @@
         </div>
       </div>
     <% } %>
+
+    <!-- 清除功能区域 -->
+    <div class="form-section clear-section">
+      <h2>清除账单</h2>
+
+      <!-- 清空所有 -->
+      <div class="clear-action">
+        <form action="/clear-all" method="POST" id="clearAllForm" style="display:inline;">
+          <button type="button" class="btn btn-danger" onclick="confirmClearAll()">清空所有账单</button>
+        </form>
+      </div>
+
+      <!-- 条件清除 -->
+      <form action="/clear-by-condition" method="POST" class="clear-condition-form">
+        <h3>按条件清除</h3>
+        <div class="form-row">
+          <div class="form-group">
+            <label>开始日期</label>
+            <input type="date" name="startDate">
+          </div>
+          <div class="form-group">
+            <label>结束日期</label>
+            <input type="date" name="endDate">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>类型</label>
+            <select name="type">
+              <option value="all">全部</option>
+              <option value="income">收入</option>
+              <option value="expense">支出</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>分类</label>
+            <select name="category">
+              <option value="all">全部</option>
+              <% expenseCategories.forEach(cat => { %>
+                <option value="<%= cat %>"><%= cat %></option>
+              <% }) %>
+            </select>
+          </div>
+        </div>
+        <button type="submit" class="btn btn-warning">清除符合条件的账单</button>
+      </form>
+
+      <!-- 批量删除 -->
+      <form action="/batch-delete" method="POST" id="batchDeleteForm">
+        <h3>批量删除</h3>
+        <div class="batch-actions">
+          <label class="checkbox-label">
+            <input type="checkbox" id="selectAll" onclick="toggleSelectAll(this)">
+            全选
+          </label>
+          <button type="submit" class="btn btn-danger" onclick="return confirmBatchDelete()">删除选中</button>
+        </div>
+        <div class="account-list">
+          <% accounts.forEach(account => { %>
+            <div class="account-item <%= account.type %>">
+              <div class="account-checkbox">
+                <input type="checkbox" name="ids" value="<%= account.id %>" class="account-check">
+              </div>
+              <div class="account-left">
+                <div class="account-date"><%= account.date %></div>
+                <div class="account-category">
+                  <%= account.type === 'income' ? '收入' : account.category %>
+                  <% if (account.remark) { %>
+                    <span class="account-remark">(<%= account.remark %>)</span>
+                  <% } %>
+                </div>
+              </div>
+              <div class="account-right">
+                <span class="account-amount <%= account.type %>">
+                  <%= account.type === 'income' ? '+' : '-' %>¥<%= account.amount.toFixed(2) %>
+                </span>
+                <div class="account-actions">
+                  <a href="/edit/<%= account.id %>" class="btn btn-sm btn-edit">编辑</a>
+                  <a href="/delete/<%= account.id %>" class="btn btn-sm btn-delete" onclick="return confirm('确定要删除这条账单吗？');">删除</a>
+                </div>
+              </div>
+            </div>
+          <% }) %>
+        </div>
+      </form>
+    </div>
 
     <!-- 添加账单表单 -->
     <div class="form-section">
@@ -95,38 +197,6 @@
       </form>
     </div>
 
-    <!-- 账单列表 -->
-    <div class="list-section">
-      <h2>账单列表</h2>
-      <% if (accounts.length === 0) { %>
-        <div class="empty">暂无账单记录</div>
-      <% } else { %>
-        <div class="account-list">
-          <% accounts.forEach(account => { %>
-            <div class="account-item <%= account.type %>">
-              <div class="account-left">
-                <div class="account-date"><%= account.date %></div>
-                <div class="account-category">
-                  <%= account.type === 'income' ? '收入' : account.category %>
-                  <% if (account.remark) { %>
-                    <span class="account-remark">(<%= account.remark %>)</span>
-                  <% } %>
-                </div>
-              </div>
-              <div class="account-right">
-                <span class="account-amount <%= account.type %>">
-                  <%= account.type === 'income' ? '+' : '-' %>¥<%= account.amount.toFixed(2) %>
-                </span>
-                <div class="account-actions">
-                  <a href="/edit/<%= account.id %>" class="btn btn-sm btn-edit">编辑</a>
-                  <a href="/delete/<%= account.id %>" class="btn btn-sm btn-delete" onclick="return confirm('确定要删除这条账单吗？');">删除</a>
-                </div>
-              </div>
-            </div>
-          <% }) %>
-        </div>
-      <% } %>
-    </div>
   </div>
 
   <script>
@@ -153,6 +223,30 @@
         document.getElementById('customCategory').name = 'customCategory';
       }
     });
+
+    // 清空所有确认
+    function confirmClearAll() {
+      if (confirm('确定要清空所有账单吗？此操作不可恢复！')) {
+        document.getElementById('clearAllForm').submit();
+      }
+    }
+
+    // 批量删除确认
+    function confirmBatchDelete() {
+      const checked = document.querySelectorAll('input[name="ids"]:checked');
+      if (checked.length === 0) {
+        alert('请选择要删除的账单');
+        return false;
+      }
+      return confirm('确定要删除选中的 ' + checked.length + ' 条账单吗？此操作不可恢复！');
+    }
+
+    // 全选/取消全选
+    function toggleSelectAll(source) {
+      const checkboxes = document.querySelectorAll('input[name="ids"]');
+      checkboxes.forEach(cb => cb.checked = source.checked);
+    }
   </script>
+  <script src="/javascripts/charts.js"></script>
 </body>
 </html>

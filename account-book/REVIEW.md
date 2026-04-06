@@ -292,3 +292,174 @@ test('添加支出账单', async ({ page }) => {
 *更新时间：2026年04月06日 - 新增 Playwright E2E 测试（15 个测试用例）*
 *更新时间：2026年04月06日 - 新增 Supertest API 测试*
 *更新时间：2026年04月06日 - 更新为 lowdb v7 持久化 + ESM 模块系统*
+
+---
+
+# 📚 知识回顾：图表空状态提示
+
+- **功能标题**：图表空状态提示
+- **实现时间**：2026年04月06日 12:16:00
+- **涉及技术**：Chart.js、DOM 操作、CSS Flexbox、空状态 UX 设计
+
+---
+
+## 1. 功能概述
+
+当账单数据为空时，图表区域不再显示空白画布，而是显示友好的提示文案：
+- 支出趋势图：`"暂无支出数据" + "添加账单后即可查看趋势"`
+- 支出分类图：`"暂无分类数据" + "添加支出账单后即可查看分类统计"`
+
+**为什么需要这个功能？**
+用户看到空白图表会困惑——是加载中？加载失败？还是真的没有数据？空状态提示消除了这种不确定性。
+
+---
+
+## 2. 设计思路
+
+**设计方案**：检测到数据为空时，用 `innerHTML` 替换 `<canvas>` 容器内容为提示 div
+
+**为什么这样设计？**
+- Chart.js 在数据为空时不会渲染任何内容，画布保持空白
+- 相比隐藏整个图表区域，替换内容更简洁（不需要额外 CSS `display:none`）
+- 提示文案放在 `.chart-wrapper` 层级，视觉上保持原布局结构
+
+---
+
+## 3. 核心代码解析
+
+### 3.1 JavaScript 空状态检测
+
+```javascript
+function renderTrendChart(monthlyTrend) {
+  const ctx = document.getElementById('trendChart');
+  const wrapper = ctx?.closest('.chart-wrapper');  // 父容器引用
+
+  if (!ctx) return;
+
+  // 空数据时显示提示
+  if (!monthlyTrend || monthlyTrend.length === 0) {
+    if (wrapper) {
+      wrapper.innerHTML = `
+        <div class="chart-empty">
+          <p>暂无支出数据</p>
+          <span>添加账单后即可查看趋势</span>
+        </div>
+      `;
+    }
+    return;  // 关键：return 阻止 Chart() 执行
+  }
+
+  new Chart(ctx, { /* 正常渲染逻辑 */ });
+}
+```
+
+**关键点**：
+- `ctx?.closest('.chart-wrapper')` 使用可选链，获取父容器用于内容替换
+- `if (!monthlyTrend || monthlyTrend.length === 0)` 同时处理 null/undefined 和空数组
+- `return` 在空状态时阻断执行，避免创建空图表实例
+
+### 3.2 CSS 样式
+
+```css
+.chart-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;  /* 关键：垂直居中 */
+  height: 260px;
+  color: #999;
+  text-align: center;
+}
+
+.chart-empty p {
+  font-size: 16px;
+  margin: 0 0 8px;
+  color: #666;
+}
+
+.chart-empty span {
+  font-size: 13px;
+}
+```
+
+---
+
+## 4. 实现流程图
+
+```mermaid
+flowchart TD
+    A[页面加载] --> B[DOMContentLoaded 事件]
+    B --> C[loadChartData 调用]
+    C --> D[fetch /api/chart-data]
+    D --> E{获取数据}
+    E -->|成功| F[renderTrendChart]
+    E -->|失败| G[console.error]
+    F --> H{monthlyTrend 有数据?}
+    H -->|是| I[创建 Chart.js 实例]
+    H -->|否| J[innerHTML 替换为空状态提示]
+    I --> K[页面显示图表]
+    J --> K
+```
+
+---
+
+## 5. 知识点详解
+
+### 知识点1：Chart.js（了解）
+
+**概念详解**：Chart.js 是一个基于 Canvas 的轻量级图表库，支持折线图、饼图、环形图等常见图表类型。
+
+**原理剖析**：
+- Chart.js 通过 HTML5 `<canvas>` 元素绑定 2D 绘图上下文
+- 数据通过 `data.datasets[0].data` 数组传入
+- 当 data 为空数组时，`datasets` 为空，Chart.js 计算出的绘图区域为 0，视觉上就是空白
+
+**应用场景**：趋势展示（折线图）、占比分析（饼图/环形图）、排名对比（柱状图）
+
+### 知识点2：DOM 操作（掌握）
+
+**深层原理**：
+- `element.innerHTML` 是**替换性赋值**，会销毁原有所有子元素及其事件监听器
+- 如果 canvas 绑定了 Chart.js 实例，直接用 `innerHTML` 替换**不会**调用 `chart.destroy()`
+- 本场景可行是因为替换发生在渲染图表**之前**，无需 destroy
+
+**设计决策考量**：
+```javascript
+// 为什么不隐藏 canvas 显示提示 div？
+// 方案A：display:none + 显示提示 div
+// 方案B：innerHTML 替换
+
+// 选择方案B的原因：
+// 1. 代码更简洁（1行 vs 3行）
+// 2. 不需要维护两个状态的 CSS 切换
+// 3. 空状态是"替代"而非"叠加"
+```
+
+### 知识点3：CSS Flexbox（熟悉）
+
+**核心原理**：Flexbox 布局中，`justify-content` 控制**主轴**方向对齐，`align-items` 控制**交叉轴**对齐。
+
+**常见误区**：
+- `justify-content` 在 `flex-direction: column` 时是垂直方向，不是水平方向
+- 父容器需要**有明确高度**才能让子元素垂直居中（本例中 `.chart-wrapper` 有 `min-height: 300px`）
+
+### 知识点4：空状态 UX 设计（掌握）
+
+**设计决策考量**：
+```
+本例的两条文案设计原则：
+1. 第一行（p）简短明确 - 说明当前状态
+2. 第二行（span）提供行动指引 - 说明如何改善
+
+效果：用户不只是知道"没有数据"，还知道"如何添加数据"
+```
+
+---
+
+## 6. 实践建议
+
+根据你的掌握程度，建议：
+
+1. **Chart.js（了解）**：建议动手实践一个小型图表项目，理解数据驱动绑定的核心概念
+
+2. **CSS Flexbox（熟悉）**：可深入学习 `flex-grow/shrink`，掌握自适应布局

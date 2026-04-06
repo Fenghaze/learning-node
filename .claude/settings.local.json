@@ -33,7 +33,10 @@
       "Bash(rmdir tests/e2e)",
       "Bash(mv __tests__/e2e/* __tests__/)",
       "Bash(rmdir __tests__/e2e)",
-      "Bash(node -e \"console.log\\(process.cwd\\(\\)\\)\")"
+      "Bash(node -e \"console.log\\(process.cwd\\(\\)\\)\")",
+      "Bash(timeout 10 npm start)",
+      "Bash(node -e \"import\\('./data/accounts.js'\\).then\\(m => m.default.clear\\(\\)\\).then\\(\\(\\) => console.log\\('数据已清除'\\)\\)\")",
+      "Bash(curl -s -X POST http://localhost:3000/clear-all -c cookies.txt -b cookies.txt)"
     ]
   }
 }

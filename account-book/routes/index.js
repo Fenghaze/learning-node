@@ -140,4 +140,74 @@ router.get('/delete/:id', async function (req, res, next) {
   }
 });
 
+/* POST clear-all - 清空所有账单 */
+router.post('/clear-all', async function (req, res, next) {
+  try {
+    await accounts.clearAll();
+    res.redirect('/?success=' + encodeURIComponent('已清空所有账单'));
+  } catch (err) {
+    next(err);
+  }
+});
+
+/* POST clear-by-condition - 按条件清除账单 */
+router.post('/clear-by-condition', async function (req, res, next) {
+  try {
+    const { startDate, endDate, type, category } = req.body;
+    const count = await accounts.clearByCondition({ startDate, endDate, type, category });
+    res.redirect('/?success=' + encodeURIComponent('已清除 ' + count + ' 条账单'));
+  } catch (err) {
+    next(err);
+  }
+});
+
+/* POST batch-delete - 批量删除账单 */
+router.post('/batch-delete', async function (req, res, next) {
+  try {
+    const { ids } = req.body;
+    if (!ids) {
+      return res.redirect('/?error=' + encodeURIComponent('请选择要删除的账单'));
+    }
+    const idsToDelete = Array.isArray(ids) ? ids : [ids];
+    const count = await accounts.batchRemove(idsToDelete);
+    res.redirect('/?success=' + encodeURIComponent('已删除 ' + count + ' 条账单'));
+  } catch (err) {
+    next(err);
+  }
+});
+
+/* GET /api/chart-data - 返回图表所需数据 */
+router.get('/api/chart-data', async function (req, res, next) {
+  try {
+    const allAccounts = await accounts.getAll();
+
+    // 计算每月支出趋势
+    const monthlyStats = {};
+    allAccounts.forEach(account => {
+      if (account.type === 'expense') {
+        const month = account.date.substring(0, 7); // YYYY-MM
+        monthlyStats[month] = (monthlyStats[month] || 0) + account.amount;
+      }
+    });
+
+    // 转换为数组并排序
+    const monthlyTrend = Object.entries(monthlyStats)
+      .map(([month, amount]) => ({ month, amount }))
+      .sort((a, b) => a.month.localeCompare(b.month));
+
+    // 分类占比数据
+    const categoryStats = await accounts.getCategoryStats();
+    const categoryData = Object.entries(categoryStats)
+      .map(([category, amount]) => ({ category, amount }))
+      .sort((a, b) => b.amount - a.amount);
+
+    res.json({
+      monthlyTrend,
+      categoryData
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
 export default router;

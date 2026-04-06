@@ -157,6 +157,49 @@ export async function getCategoryStats() {
   return stats;
 }
 
+// 清空所有账单
+export async function clearAll() {
+  const db = await getDb();
+  db.data.accounts = [];
+  await db.write();
+  return true;
+}
+
+// 按条件清除账单
+export async function clearByCondition({ startDate, endDate, type, category }) {
+  const db = await getDb();
+  let accounts = db.data.accounts || [];
+
+  if (startDate) {
+    accounts = accounts.filter(a => a.date >= startDate);
+  }
+  if (endDate) {
+    accounts = accounts.filter(a => a.date <= endDate);
+  }
+  if (type && type !== 'all') {
+    accounts = accounts.filter(a => a.type === type);
+  }
+  if (category && category !== 'all') {
+    accounts = accounts.filter(a => a.category === category);
+  }
+
+  // 从原始数据中移除符合条件的账单
+  const idsToRemove = new Set(accounts.map(a => a.id));
+  db.data.accounts = db.data.accounts.filter(a => !idsToRemove.has(a.id));
+  await db.write();
+  return accounts.length;
+}
+
+// 批量删除账单
+export async function batchRemove(ids) {
+  const db = await getDb();
+  const idSet = new Set(ids.map(id => parseInt(id)));
+  const originalCount = db.data.accounts.length;
+  db.data.accounts = db.data.accounts.filter(a => !idSet.has(a.id));
+  await db.write();
+  return originalCount - db.data.accounts.length;
+}
+
 // 同步版本 - 供路由直接调用（Express 会等待 promise）
 export const getAllSync = async (...args) => getAll(...args);
 export const getByIdSync = async (...args) => getById(...args);
@@ -165,6 +208,9 @@ export const updateSync = async (...args) => update(...args);
 export const removeSync = async (...args) => remove(...args);
 export const getStatsSync = async (...args) => getStats(...args);
 export const getCategoryStatsSync = async (...args) => getCategoryStats(...args);
+export const clearAllSync = async (...args) => clearAll(...args);
+export const clearByConditionSync = async (...args) => clearByCondition(...args);
+export const batchRemoveSync = async (...args) => batchRemove(...args);
 
 export {
   EXPENSE_CATEGORIES
