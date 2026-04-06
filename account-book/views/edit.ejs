@@ -39,7 +39,7 @@
           </div>
           <div class="form-group custom-category-group" <%= !expenseCategories.includes(account.category) ? '' : 'style="display:none;"'%>>
             <label>自定义分类</label>
-            <input type="text" name="category" id="customCategory" placeholder="输入分类名称" value="<%= !expenseCategories.includes(account.category) ? account.category : '' %>">
+            <input type="text" name="customCategory" id="customCategory" placeholder="输入分类名称" value="<%= !expenseCategories.includes(account.category) ? account.category : '' %>">
           </div>
         </div>
         <div class="form-row">
@@ -80,9 +80,11 @@
       if (categorySelect.value === 'custom') {
         customGroup.style.display = 'block';
         customCategory.name = 'category';
+        categorySelect.name = '';
       } else {
         customGroup.style.display = 'none';
         customCategory.name = '';
+        categorySelect.name = 'category';
       }
     }
 

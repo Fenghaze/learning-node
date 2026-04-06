@@ -19,7 +19,7 @@ test.describe('账户记账应用 - E2E 测试', () => {
     await page.selectOption('#categorySelect', '餐饮');
     await page.fill('input[name="amount"]', uniqueAmount);
     await page.fill('input[name="remark"]', 'E2E测试支出');
-    await page.click('button[type="submit"]');
+    await page.locator('#addForm button[type="submit"]').click();
 
     await expect(page.locator('.message.success')).toContainText('添加成功');
     await expect(page.locator('.account-item.expense').filter({ hasText: uniqueAmount })).toBeVisible();
@@ -32,7 +32,7 @@ test.describe('账户记账应用 - E2E 测试', () => {
     await page.selectOption('#typeSelect', 'income');
     await page.fill('input[name="amount"]', uniqueAmount);
     await page.fill('input[name="remark"]', 'E2E测试收入');
-    await page.click('button[type="submit"]');
+    await page.locator('#addForm button[type="submit"]').click();
 
     await expect(page.locator('.message.success')).toContainText('添加成功');
     await expect(page.locator('.account-item.income').filter({ hasText: uniqueAmount })).toBeVisible();
@@ -52,7 +52,7 @@ test.describe('账户记账应用 - E2E 测试', () => {
     await page.fill('input[name="amount"]', '-50');
 
     // 点击提交后 HTML5 验证会显示内置错误提示
-    await page.click('button[type="submit"]');
+    await page.locator('#addForm button[type="submit"]').click();
 
     // 检查 amount 输入框有 min 属性
     await expect(page.locator('input[name="amount"]')).toHaveAttribute('min', '0.01');
@@ -78,7 +78,7 @@ test.describe('账户记账应用 - E2E 测试', () => {
     await page.selectOption('#categorySelect', 'custom');
     await page.fill('#customCategory', uniqueCategory);
     await page.fill('input[name="amount"]', '31.00');
-    await page.click('button[type="submit"]');
+    await page.locator('#addForm button[type="submit"]').click();
 
     await expect(page.locator('.message.success')).toContainText('添加成功');
     await expect(page.locator('.account-item').filter({ hasText: uniqueCategory })).toBeVisible();
@@ -92,7 +92,7 @@ test.describe('账户记账应用 - E2E 测试', () => {
     await page.selectOption('#categorySelect', '餐饮');
     await page.fill('input[name="amount"]', uniqueAmount);
     await page.fill('input[name="remark"]', '待编辑');
-    await page.click('button[type="submit"]');
+    await page.locator('#addForm button[type="submit"]').click();
 
     await expect(page.locator('.message.success')).toContainText('添加成功');
 
@@ -102,7 +102,7 @@ test.describe('账户记账应用 - E2E 测试', () => {
 
     const newAmount = (parseFloat(uniqueAmount) + 10).toFixed(2);
     await page.fill('input[name="amount"]', newAmount);
-    await page.click('button[type="submit"]');
+    await page.locator('#editForm button[type="submit"]').click();
 
     await expect(page.locator('.message.success')).toContainText('更新成功');
   });
@@ -120,7 +120,7 @@ test.describe('账户记账应用 - E2E 测试', () => {
     await page.selectOption('#typeSelect', 'expense');
     await page.selectOption('#categorySelect', '餐饮');
     await page.fill('input[name="amount"]', uniqueAmount);
-    await page.click('button[type="submit"]');
+    await page.locator('#addForm button[type="submit"]').click();
 
     const initialCount = await page.locator('.account-item').count();
 
@@ -171,17 +171,17 @@ test.describe('账户记账应用 - E2E 测试', () => {
     const amount1 = '11.' + Date.now().toString().slice(-2);
     const amount2 = '22.' + Date.now().toString().slice(-2);
 
-    await page.fill('input[name="date"]', '2026-02-01');
-    await page.selectOption('#typeSelect', 'expense');
-    await page.selectOption('#categorySelect', '餐饮');
-    await page.fill('input[name="amount"]', amount1);
-    await page.fill('input[name="remark"]', '清空测试1');
-    await page.click('button[type="submit"]');
+    await page.fill('#addForm input[name="date"]', '2026-02-01');
+    await page.selectOption('#addForm #typeSelect', 'expense');
+    await page.selectOption('#addForm #categorySelect', '餐饮');
+    await page.fill('#addForm input[name="amount"]', amount1);
+    await page.fill('#addForm input[name="remark"]', '清空测试1');
+    await page.locator('#addForm button[type="submit"]').click();
 
-    await page.fill('input[name="date"]', '2026-02-02');
-    await page.fill('input[name="amount"]', amount2);
-    await page.fill('input[name="remark"]', '清空测试2');
-    await page.click('button[type="submit"]');
+    await page.fill('#addForm input[name="date"]', '2026-02-02');
+    await page.fill('#addForm input[name="amount"]', amount2);
+    await page.fill('#addForm input[name="remark"]', '清空测试2');
+    await page.locator('#addForm button[type="submit"]').click();
 
     await expect(page.locator('.message.success')).toContainText('添加成功');
 
@@ -209,27 +209,27 @@ test.describe('账户记账应用 - E2E 测试', () => {
     const uniquePrefix = Date.now().toString().slice(-4);
 
     // 支出 - 餐饮 - 2026-03-01
-    await page.fill('input[name="date"]', '2026-03-01');
-    await page.selectOption('#typeSelect', 'expense');
-    await page.selectOption('#categorySelect', '餐饮');
-    await page.fill('input[name="amount"]', '31.' + uniquePrefix);
-    await page.fill('input[name="remark"]', '条件清除餐饮');
-    await page.click('button[type="submit"]');
+    await page.fill('#addForm input[name="date"]', '2026-03-01');
+    await page.selectOption('#addForm #typeSelect', 'expense');
+    await page.selectOption('#addForm #categorySelect', '餐饮');
+    await page.fill('#addForm input[name="amount"]', '31.' + uniquePrefix);
+    await page.fill('#addForm input[name="remark"]', '条件清除餐饮');
+    await page.locator('#addForm button[type="submit"]').click();
 
     // 支出 - 交通 - 2026-03-02
-    await page.fill('input[name="date"]', '2026-03-02');
-    await page.selectOption('#typeSelect', 'expense');
-    await page.selectOption('#categorySelect', '交通');
-    await page.fill('input[name="amount"]', '32.' + uniquePrefix);
-    await page.fill('input[name="remark"]', '条件清除交通');
-    await page.click('button[type="submit"]');
+    await page.fill('#addForm input[name="date"]', '2026-03-02');
+    await page.selectOption('#addForm #typeSelect', 'expense');
+    await page.selectOption('#addForm #categorySelect', '交通');
+    await page.fill('#addForm input[name="amount"]', '32.' + uniquePrefix);
+    await page.fill('#addForm input[name="remark"]', '条件清除交通');
+    await page.locator('#addForm button[type="submit"]').click();
 
     // 收入 - 2026-03-03
-    await page.fill('input[name="date"]', '2026-03-03');
-    await page.selectOption('#typeSelect', 'income');
-    await page.fill('input[name="amount"]', '100.' + uniquePrefix);
-    await page.fill('input[name="remark"]', '条件清除收入');
-    await page.click('button[type="submit"]');
+    await page.fill('#addForm input[name="date"]', '2026-03-03');
+    await page.selectOption('#addForm #typeSelect', 'income');
+    await page.fill('#addForm input[name="amount"]', '100.' + uniquePrefix);
+    await page.fill('#addForm input[name="remark"]', '条件清除收入');
+    await page.locator('#addForm button[type="submit"]').click();
 
     await expect(page.locator('.message.success')).toContainText('添加成功');
 
@@ -253,27 +253,27 @@ test.describe('账户记账应用 - E2E 测试', () => {
     // 1. 添加多条账单
     const uniquePrefix = Date.now().toString().slice(-5);
 
-    await page.fill('input[name="date"]', '2026-04-01');
-    await page.selectOption('#typeSelect', 'expense');
-    await page.selectOption('#categorySelect', '餐饮');
-    await page.fill('input[name="amount"]', '41.' + uniquePrefix);
-    await page.fill('input[name="remark"]', '批量删除1');
-    await page.click('button[type="submit"]');
+    await page.fill('#addForm input[name="date"]', '2026-04-01');
+    await page.selectOption('#addForm #typeSelect', 'expense');
+    await page.selectOption('#addForm #categorySelect', '餐饮');
+    await page.fill('#addForm input[name="amount"]', '41.' + uniquePrefix);
+    await page.fill('#addForm input[name="remark"]', '批量删除1');
+    await page.locator('#addForm button[type="submit"]').click();
 
-    await page.fill('input[name="date"]', '2026-04-02');
-    await page.fill('input[name="amount"]', '42.' + uniquePrefix);
-    await page.fill('input[name="remark"]', '批量删除2');
-    await page.click('button[type="submit"]');
+    await page.fill('#addForm input[name="date"]', '2026-04-02');
+    await page.fill('#addForm input[name="amount"]', '42.' + uniquePrefix);
+    await page.fill('#addForm input[name="remark"]', '批量删除2');
+    await page.locator('#addForm button[type="submit"]').click();
 
-    await page.fill('input[name="date"]', '2026-04-03');
-    await page.fill('input[name="amount"]', '43.' + uniquePrefix);
-    await page.fill('input[name="remark"]', '批量删除3');
-    await page.click('button[type="submit"]');
+    await page.fill('#addForm input[name="date"]', '2026-04-03');
+    await page.fill('#addForm input[name="amount"]', '43.' + uniquePrefix);
+    await page.fill('#addForm input[name="remark"]', '批量删除3');
+    await page.locator('#addForm button[type="submit"]').click();
 
-    await page.fill('input[name="date"]', '2026-04-04');
-    await page.fill('input[name="amount"]', '44.' + uniquePrefix);
-    await page.fill('input[name="remark"]', '批量删除4');
-    await page.click('button[type="submit"]');
+    await page.fill('#addForm input[name="date"]', '2026-04-04');
+    await page.fill('#addForm input[name="amount"]', '44.' + uniquePrefix);
+    await page.fill('#addForm input[name="remark"]', '批量删除4');
+    await page.locator('#addForm button[type="submit"]').click();
 
     await expect(page.locator('.message.success')).toContainText('添加成功');
     await expect(page.locator('.account-item.expense')).toHaveCount(4);

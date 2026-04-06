@@ -3,19 +3,25 @@
 - **功能标题**：简易记账本 DEMO
 - **实现时间**：2026年04月03日 10:34:19
 - **更新时间**：2026年04月06日
-- **涉及技术**：Express.js、EJS 模板引擎、Node.js ESM、lowdb v7 持久化
+- **涉及技术**：Express.js、EJS 模板引擎、Node.js ESM、MongoDB + Mongoose 持久化
 
 ---
 
 ## 1. 功能概述
 
-简易记账本实现了一个基本的账务管理工具：
+简易记账本实现了一个完整的账务管理工具：
 - **添加账单**：支持日期、类型（收入/支出）、分类、金额、备注
 - **查看列表**：按日期降序显示所有账单
 - **编辑账单**：修改已有账单的所有字段
 - **删除账单**：删除指定账单，带确认提示
+- **批量删除**：支持全选/多选批量删除账单
+- **按条件查询**：日期范围、类型、分类、金额范围组合筛选
+- **分页展示**：支持 5/10/15/30/100 条每页，带页码导航
 - **统计功能**：实时计算收入、支出、余额，支持分类统计
-- **数据持久化**：使用 lowdb 存储到 JSON 文件，重启后数据保留
+- **图表可视化**：支出趋势图（折线图）、分类占比图（环形图）
+- **Excel 导出**：导出账单数据为 Excel 文件
+- **空状态 UX**：数据为空时显示友好提示
+- **数据持久化**：使用 MongoDB + Mongoose 存储，重启后数据保留
 
 ---
 
@@ -24,7 +30,7 @@
 ### 数据流设计
 
 ```
-浏览器表单 → Express路由(异步) → accounts.js(lowdb) → accounts.json(持久化)
+浏览器表单 → Express路由(异步) → accounts.js(Mongoose) → account-book-database(持久化)
      ↑                                      ↓
      └──────────── 渲染 EJS ←──────────────┘
 ```
@@ -34,15 +40,15 @@
 | 模块 | 职责 | 文件 |
 |------|------|------|
 | 路由层 | 接收请求、参数验证、调用业务、返回响应 | routes/index.js |
-| 数据层 | CRUD操作、lowdb持久化、统计计算 | data/accounts.js |
+| 数据层 | CRUD操作、Mongoose持久化、统计计算 | data/accounts.js |
 | 视图层 | 页面渲染、表单展示 | views/index.ejs, views/edit.ejs |
 
 ### 为什么这样设计？
 
 - **分层职责**：路由不写业务逻辑，业务逻辑独立到 data 模块
-- **lowdb持久化**：DEMO级别无需数据库，lowdb 提供内存缓存+懒写入
+- **Mongoose持久化**：使用 Mongoose ODM，Schema 定义数据结构
 - **EJS模板**：服务端渲染，简单直接，无需构建工具
-- **ESM模块**：现代 Node.js 模块系统，与 lowdb v7 兼容
+- **ESM模块**：现代 Node.js 模块系统
 
 ---
 
@@ -78,55 +84,42 @@ router.get('/', async function (req, res, next) {
 });
 ```
 
-### 3.2 lowdb 数据持久化（data/accounts.js）
+### 3.2 Mongoose 数据持久化（data/accounts.js）
 
-**初始化 lowdb**
+**定义 Schema 和 Model**
 ```javascript
-import { Low } from 'lowdb';
-import { JSONFile } from 'lowdb/node';
-import path from 'path';
-import { fileURLToPath } from 'url';
+import mongoose from 'mongoose';
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const DATA_FILE = path.join(__dirname, 'accounts.json');
+const accountSchema = new mongoose.Schema({
+  id: { type: Number, required: true, unique: true },
+  date: { type: String, required: true },
+  type: { type: String, required: true, enum: ['income', 'expense'] },
+  category: { type: String, default: '' },
+  amount: { type: Number, required: true },
+  remark: { type: String, default: '' }
+}, { versionKey: false });
 
-async function initDb() {
-  const adapter = new JSONFile(DATA_FILE);
-  const db = new Low(adapter, { accounts: [] });
-  await db.read();
-  return db;
-}
-
-// 单例模式
-let dbPromise = null;
-async function getDb() {
-  if (!dbPromise) {
-    dbPromise = initDb();
-  }
-  return dbPromise;
-}
+const Account = mongoose.model('Account', accountSchema);
 ```
 
 **CRUD 操作示例**
 ```javascript
+// 查询所有账单
 export async function getAll() {
-  const db = await getDb();
-  const accounts = db.data.accounts || [];
-  return accounts.sort((a, b) => new Date(b.date) - new Date(a.date));
+  return Account.find({}).sort({ date: -1 });
 }
 
+// 添加账单
 export async function add(account) {
-  const db = await getDb();
-  const newAccount = {
+  const newAccount = new Account({
     id: Date.now(),
     date: account.date,
     type: account.type,
     category: account.category || '',
     amount: parseFloat(account.amount),
     remark: account.remark || ''
-  };
-  db.data.accounts.push(newAccount);
-  await db.write();  // lowdb 自动将更改写入文件
+  });
+  await newAccount.save();
   return newAccount;
 }
 ```
@@ -163,26 +156,29 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 ---
 
-### 知识点 2：lowdb v7
+### 知识点 2：Mongoose ODM
 
 **核心 API**
 
 | 方法 | 说明 |
 |------|------|
-| `new JSONFile(path)` | 创建 JSON 文件适配器 |
-| `new Low(adapter, defaultData)` | 创建 lowdb 实例 |
-| `await db.read()` | 从文件读取数据到内存 |
-| `await db.write()` | 将内存数据写入文件 |
-| `db.data.accounts` | 访问数据（自动类型推断） |
+| `mongoose.connect(uri)` | 建立数据库连接 |
+| `new Schema({})` | 定义数据结构 Schema |
+| `mongoose.model(name, schema)` | 创建 Model |
+| `Model.find({}).sort()` | 查询列表 |
+| `new Model(doc).save()` | 插入文档 |
+| `Model.findOneAndUpdate()` | 更新文档 |
+| `Model.deleteOne()` | 删除文档 |
+| `Model.aggregate()` | 聚合统计 |
 
-**lowdb vs 手动 fs**
+**Mongoose 优势**
 
-| 方面 | 手动 fs | lowdb |
-|------|--------|-------|
-| 文件读取 | 每次操作都读 | 启动时读一次，内存缓存 |
-| 文件写入 | 每次操作都写 | 懒写入（调用 write() 时） |
-| 代码量 | 需要 readFromFile/writeToFile | 内置 |
-| 原子性 | 无 | 支持事务 |
+| 方面 | 纯 mongodb 驱动 | Mongoose |
+|------|---------------|----------|
+| Schema | 无 | 有，数据结构清晰 |
+| 验证 | 手动 | 内置数据验证 |
+| 中间件 | 无 | 生命周期钩子 |
+| 社区 | - | 更流行，答案更多 |
 
 ---
 
@@ -190,7 +186,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 **为什么需要 async/await？**
 
-lowdb 的 `db.read()` 和 `db.write()` 是异步的，所以路由处理器必须 async：
+MongoDB 的 `find()`, `insertOne()` 等操作是异步的，所以路由处理器必须 async：
 
 ```javascript
 // 错误：同步函数无法 await
@@ -221,14 +217,18 @@ router.get('/', async function (req, res, next) {
 
 ## 5. 关键代码位置
 
-| 功能 | 文件路径 | 关键函数 |
-|------|---------|---------|
+| 功能 | 文件路径 | 关键函数/说明 |
+|------|---------|--------------|
 | 路由处理 | routes/index.js | async route handlers |
-| 数据操作 | data/accounts.js | getAll, add, update, remove, getStats |
-| lowdb 初始化 | data/accounts.js | initDb, getDb |
-| 列表页面 | views/index.ejs | 账单循环、统计卡片 |
+| 数据操作 | data/accounts.js | getAll, add, update, remove, getStats, queryByCondition, batchRemove |
+| Mongoose 初始化 | data/accounts.js | initializeDb, closeDb, 连接事件监听 |
+| 列表页面 | views/index.ejs | 账单循环、统计卡片、查询表单、分页导航 |
 | 编辑页面 | views/edit.ejs | 表单预填充 |
-| 样式 | public/stylesheets/style.css | 统计卡片、列表样式 |
+| 图表渲染 | public/javascripts/charts.js | renderTrendChart, renderCategoryChart, 空状态处理 |
+| 样式 | public/stylesheets/style.css | 统计卡片、列表样式、分页样式、chart-empty |
+| Excel 导出 | routes/index.js | GET /export |
+| 图表数据 API | routes/index.js | GET /api/chart-data |
+| 批量删除 | routes/index.js | POST /batch-delete |
 
 ---
 
@@ -289,9 +289,70 @@ test('添加支出账单', async ({ page }) => {
 
 ---
 
+*更新时间：2026年04月06日 - 迁移到 Mongoose ODM 持久化*
 *更新时间：2026年04月06日 - 新增 Playwright E2E 测试（15 个测试用例）*
 *更新时间：2026年04月06日 - 新增 Supertest API 测试*
 *更新时间：2026年04月06日 - 更新为 lowdb v7 持久化 + ESM 模块系统*
+
+---
+
+# 📚 知识回顾：MongoDB 连接事件监听
+
+- **功能标题**：MongoDB 连接事件监听
+- **实现时间**：2026年04月06日
+- **涉及技术**：Mongoose 连接管理、事件监听器
+
+---
+
+## 1. 功能概述
+
+监听 MongoDB 连接状态变化，输出中文日志：
+- **connected**：连接成功
+- **disconnected**：连接已断开
+- **error**：连接错误
+- **reconnected**：重新连接成功
+
+---
+
+## 2. 核心代码
+
+```javascript
+import mongoose from 'mongoose';
+
+mongoose.connection.on('connected', () => {
+  console.log('[MongoDB] 连接成功');
+});
+
+mongoose.connection.on('disconnected', () => {
+  console.log('[MongoDB] 连接已断开');
+  isConnected = false;
+});
+
+mongoose.connection.on('error', (err) => {
+  console.error('[MongoDB] 连接错误:', err.message);
+});
+
+mongoose.connection.on('reconnected', () => {
+  console.log('[MongoDB] 重新连接成功');
+});
+```
+
+---
+
+## 3. 设计要点
+
+| 事件 | 触发时机 | 典型原因 |
+|------|---------|---------|
+| connected | `mongoose.connect()` 成功 | 首次连接 |
+| disconnected | 服务器关闭/网络中断 | 服务重启、网络故障 |
+| error | 连接过程中发生错误 | URI 错误、认证失败 |
+| reconnected | 断线后自动重连成功 | 网络恢复 |
+
+**注意**：`disconnected` 事件中需手动设置 `isConnected = false`，因为 Mongoose 不会自动更新该标志。
+
+---
+
+*更新时间：2026年04月06日 - 新增 MongoDB 连接事件监听*
 
 ---
 
@@ -463,3 +524,297 @@ flowchart TD
 1. **Chart.js（了解）**：建议动手实践一个小型图表项目，理解数据驱动绑定的核心概念
 
 2. **CSS Flexbox（熟悉）**：可深入学习 `flex-grow/shrink`，掌握自适应布局
+
+---
+
+# 📚 知识回顾：按条件查询 + 分页
+
+- **功能标题**：按条件查询账单 + 分页展示
+- **实现时间**：2026年04月06日
+- **涉及技术**：Express POST 路由、Mongoose skip/limit、Form 值保留、EJS 动态模板
+
+---
+
+## 1. 功能概述
+
+支持多条件组合查询账单，并分页展示结果：
+- **查询条件**：开始日期、结束日期、类型（收入/支出）、分类、金额范围
+- **分页参数**：每页条数（5/10/15/30/100）、当前页码
+- **结果展示**：显示第 X-Y 条，共 Z 条，支持页码导航
+
+---
+
+## 2. 设计思路
+
+### 数据流设计
+
+```
+表单提交(POST) → 路由解析参数 → buildQuery 构建查询对象 → MongoDB skip/limit → 返回 { list, total }
+     ↑                                                                                  ↓
+     └─────────────────────── EJS 渲染（保留表单值）←───────────────────────────────┘
+```
+
+### 核心问题：POST 请求后表单值丢失
+
+**问题**：表单提交后页面刷新，表单恢复默认状态，用户之前输入的条件全部丢失。
+
+**解决方案**：
+1. 路由将查询参数 `query` 对象传回视图
+2. 视图表单字段设置动态 `value`/`selected` 属性
+
+---
+
+## 3. 核心代码解析
+
+### 3.1 路由层：传递 query 对象
+
+```javascript
+router.post('/query', async (req, res, next) => {
+  try {
+    const { startDate, endDate, type, category, minAmount, maxAmount, page, limit } = req.body;
+
+    const { list: accountList, total } = await accounts.queryByCondition({
+      startDate, endDate, type, category, minAmount, maxAmount, page, limit
+    });
+
+    const currentPage = page ? parseInt(page) : 1;
+    const pageLimit = limit ? parseInt(limit) : 15;
+
+    res.render('index', {
+      // ...其他数据
+      query: { startDate, endDate, type, category, minAmount, maxAmount },  // 关键：传回查询条件
+      currentPage,
+      pageLimit,
+      total
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+```
+
+### 3.2 视图层：表单值保留
+
+```html
+<!-- 输入框保留值 -->
+<input type="date" name="startDate" value="<%= typeof query !== 'undefined' ? query.startDate || '' : '' %>">
+
+<!-- Select 保留选中状态 -->
+<select name="type">
+  <option value="all" <%= typeof query !== 'undefined' && query.type === 'all' ? 'selected' : '' %>>全部</option>
+  <option value="expense" <%= typeof query !== 'undefined' && query.type === 'expense' ? 'selected' : '' %>>支出</option>
+</select>
+
+<!-- 分页导航：点击页码提交表单，自动携带所有查询条件 -->
+<button onclick="goToPage(<%= currentPage %>)">下一页</button>
+<script>
+function goToPage(pageNum) {
+  document.getElementById('queryPage').value = pageNum;
+  document.getElementById('queryForm').submit();  // 表单包含所有可见字段
+}
+</script>
+```
+
+### 3.3 MongoDB 分页查询
+
+```javascript
+// data/accounts.js
+export async function queryByCondition({ page, limit, ...condition }) {
+  const query = buildQuery(condition);  // 构建 MongoDB 查询对象
+
+  if (page && limit) {
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+    const [list, total] = await Promise.all([
+      Account.find(query).sort({ date: -1 }).skip(skip).limit(parseInt(limit)),
+      Account.countDocuments(query)  // 关键：同时查总数
+    ]);
+    return { list, total };
+  }
+
+  const list = await Account.find(query).sort({ date: -1 });
+  return { list, total: list.length };
+}
+```
+
+**关键点**：
+- `skip()` 跳过前 N 条
+- `limit()` 限制返回条数
+- `countDocuments()` 获取满足条件的总数，用于计算总页数
+
+---
+
+## 4. 知识点详解
+
+### 知识点1：Mongoose skip/limit 分页
+
+**核心原理**：
+```javascript
+// 第 page 页，每页 limit 条
+const skip = (page - 1) * limit;
+Account.find(query).skip(skip).limit(limit);
+```
+
+**性能注意**：
+- 大数据量时 skip 越往后越慢（需要跳过大量文档）
+- 解决方案：使用游标分页或基于 ID 的范围查询
+
+### 知识点2：POST 请求表单值保留
+
+**问题本质**：HTTP 是无状态的，POST 跳转后浏览器不自动保留表单值。
+
+**解决方案对比**：
+
+| 方案 | 优点 | 缺点 |
+|------|------|------|
+| URL 参数 | 简单 | 参数暴露、长度限制 |
+| Session/Cookie | 可持久化 | 需要额外存储 |
+| 视图重新渲染 | 适合本场景 | 仅限当前请求 |
+
+**本项目选择**：视图重新渲染 + query 对象传递
+
+### 知识点3：EJS 三元表达式处理 undefined
+
+```html
+<!-- 安全访问可能不存在的变量 -->
+<%= typeof query !== 'undefined' ? query.startDate || '' : '' %>
+
+<!-- 等价于： -->
+<% if (typeof query !== 'undefined' && query.startDate) { %>
+  <%= query.startDate %>
+<% } else { %>
+  <%= '' %>
+<% } %>
+```
+
+---
+
+## 5. 常见错误
+
+### 错误1：表单值不保留
+
+**原因**：路由没有传递 query 对象，或表单字段没有动态 value。
+
+**排查步骤**：
+1. 检查路由是否传递 `query` 到视图
+2. 检查表单字段是否有 `value="<%= ... %>"` 动态属性
+3. 用 curl 测试验证：`curl -X POST -d "startDate=2026-01-01" ...`
+
+### 错误2：切换分页后条件丢失
+
+**原因**：`goToPage()` 只设置了 page，没有提交整个表单。
+
+**正确做法**：
+```javascript
+function goToPage(pageNum) {
+  document.getElementById('queryPage').value = pageNum;
+  document.getElementById('queryForm').submit();  // 提交整个表单
+}
+```
+
+---
+
+## 6. 最佳实践
+
+1. **始终传递 query 对象**：POST 重新渲染时必须保留用户输入
+2. **使用 Promise.all 并行查询**：数据和总数一起查，减少数据库往返
+3. **表单提交用 POST**：GET 查询有参数长度限制和缓存问题
+4. **默认值处理**：page/limit 未传时提供合理的默认值（1 和 15）
+
+---
+
+*更新时间：2026年04月06日 - 新增按条件查询 + 分页功能*
+
+---
+
+# 📚 知识回顾：批量删除
+
+- **功能标题**：批量删除账单
+- **实现时间**：2026年04月06日
+- **涉及技术**：Express POST 路由、Mongoose deleteMany、Form 表单关联
+
+---
+
+## 1. 功能概述
+
+支持选择多个账单进行批量删除：
+- **全选/取消全选**：复选框控制
+- **删除确认**：防止误操作
+- **异步删除**：一次性删除多条
+
+---
+
+## 2. 核心代码
+
+### 2.1 批量删除路由
+
+```javascript
+router.post('/batch-delete', async (req, res, next) => {
+  try {
+    const { ids } = req.body;
+    if (!ids) {
+      return res.redirect(buildRedirectUrl('请选择要删除的账单', 'error'));
+    }
+    const idList = Array.isArray(ids) ? ids : [ids];  // 处理单选/多选
+    const count = await accounts.batchRemove(idList);
+    res.redirect(buildRedirectUrl(`已删除 ${count} 条账单`, 'success'));
+  } catch (err) {
+    next(err);
+  }
+});
+```
+
+### 2.2 数据层批量删除
+
+```javascript
+export async function batchRemove(ids) {
+  const idSet = new Set(ids.map(id => parseInt(id)));
+  const result = await Account.deleteMany({ id: { $in: [...idSet] } });
+  return result.deletedCount;
+}
+```
+
+### 2.3 前端复选框关联
+
+```html
+<!-- 隐藏表单，关联外部复选框 -->
+<form action="/batch-delete" method="POST" id="batchDeleteForm"></form>
+
+<!-- 复选框通过 form 属性关联表单 -->
+<input type="checkbox" name="ids" value="<%= account.id %>" form="batchDeleteForm">
+
+<!-- 全选功能 -->
+<input type="checkbox" id="selectAll" onclick="toggleSelectAll(this)">
+
+<script>
+function toggleSelectAll(source) {
+  const checkboxes = document.querySelectorAll('input[name="ids"]');
+  checkboxes.forEach(cb => cb.checked = source.checked);
+}
+</script>
+```
+
+---
+
+## 3. 设计要点
+
+**为什么用 `form` 属性关联？**
+- 复选框不在 `<form>` 内部，但通过 `form="batchDeleteForm"` 关联
+- 保持账单列表结构清晰，无需嵌套表单
+
+**为什么用 `deleteMany({ id: { $in: [...] } })`？**
+- `deleteMany` 一次性删除多条，比循环 `deleteOne` 高效
+- `$in` 操作符匹配多个 ID 值
+
+---
+
+## 4. 最佳实践
+
+1. **删除前确认**：防止用户误删
+2. **处理空选择**：未选择时提示用户
+3. **处理单选情况**：`Array.isArray(ids) ? ids : [ids]`
+4. **返回删除数量**：让用户知道操作结果
+
+---
+
+*更新时间：2026年04月06日 - 新增批量删除功能*
+

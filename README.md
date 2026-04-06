@@ -15,7 +15,7 @@
 - Formidable - 解析表单数据
 - Morgan - HTTP 日志中间件
 - Cookie-Parser - Cookie 解析
-- lowdb v7 - JSON 数据库（持久化存储）
+- MongoDB + Mongoose - 文档数据库 + ODM（持久化存储）
 - Jest + Supertest - API 测试框架
 - Playwright - E2E 浏览器测试框架
 
@@ -28,11 +28,14 @@ npx playwright test   # 运行 E2E 测试（自动启动服务器）
 **模块系统：** ESM（ECMAScript Modules），package.json 中设置 `"type": "module"`
 
 **功能特点：**
-- 页面渲染 (EJS 模板)
-- 文件上传
-- 表单数据处理
-- Cookie 管理
-- 静态资源服务
+- 账单管理：添加、编辑、删除、批量删除
+- 按条件查询：日期范围、类型、分类、金额范围
+- 分页展示：支持 5/10/15/30/100 条每页
+- 统计看板：收入/支出/余额、分类统计
+- 图表可视化：支出趋势图（折线图）、分类占比图（环形图）
+- Excel 导出：导出账单数据
+- 空状态提示：数据为空时显示友好提示
+- 数据持久化：MongoDB + Mongoose
 
 **启动方式：**
 ```bash

@@ -1,6 +1,14 @@
 import * as accounts from '../data/accounts.js';
 
 describe('账单数据模块', () => {
+  beforeAll(async () => {
+    await accounts.initializeDb();
+  });
+
+  afterAll(async () => {
+    await accounts.closeDb();
+  });
+
   const testAccount = {
     date: '2024-01-01',
     type: 'expense',

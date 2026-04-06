@@ -1,7 +1,16 @@
 import request from 'supertest';
 import app from '../app.js';
+import * as accounts from '../data/accounts.js';
 
 describe('API 路由测试', () => {
+  beforeAll(async () => {
+    await accounts.initializeDb();
+  });
+
+  afterAll(async () => {
+    await accounts.closeDb();
+  });
+
   describe('GET /', () => {
     it('应返回 200 并显示账单列表', async () => {
       const res = await request(app).get('/');
