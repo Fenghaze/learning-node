@@ -17,6 +17,12 @@ An Express + EJS-based accounting/bookkeeping application.
 - Formidable - Form data parsing
 - Morgan - HTTP logging middleware
 - Cookie-Parser - Cookie parsing
+- lowdb v7 - JSON database for persistence
+- Jest + Supertest - Testing
+
+**Testing:** `npm test` runs Jest with Supertest API tests
+
+**Module system:** ESM (ECMAScript Modules) with `"type": "module"` in package.json
 
 **Start the server:**
 ```bash
@@ -32,8 +38,8 @@ Server runs on port 3000 by default.
 
 **App setup:** [app.js](account-book/app.js) - Express app configuration (middleware, view engine, routes)
 
-**Data layer:** [data/accounts.js](account-book/data/accounts.js) - In-memory data store backed by JSON file at `data/accounts.json`
-- CRUD operations: `getAll`, `getById`, `add`, `update`, `remove`
+**Data layer:** [data/accounts.js](account-book/data/accounts.js) - Uses lowdb v7 for persistence (JSON file at `data/accounts.json`)
+- All data operations are async: `getAll`, `getById`, `add`, `update`, `remove`
 - Statistics: `getStats` (income/expense/balance), `getCategoryStats`
 
 **Routes:** [routes/index.js](account-book/routes/index.js) - All route handlers

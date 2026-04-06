@@ -1,4 +1,4 @@
-module.exports = {
+export default {
   testEnvironment: 'node',
   testMatch: ['**/__tests__/**/*.test.js'],
   collectCoverageFrom: [
@@ -7,5 +7,6 @@ module.exports = {
     '!node_modules/**'
   ],
   coverageDirectory: 'coverage',
-  verbose: true
+  verbose: true,
+  transform: {}
 };

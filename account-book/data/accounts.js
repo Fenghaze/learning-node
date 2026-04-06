@@ -1,9 +1,11 @@
-// 账单数据存储模块
+// 账单数据存储模块 - 使用 lowdb 持久化
 
-const fs = require('fs');
-const path = require('path');
+import { Low } from 'lowdb';
+import { JSONFile } from 'lowdb/node';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
-// JSON 文件路径
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DATA_FILE = path.join(__dirname, 'accounts.json');
 
 // 预设分类
@@ -17,46 +19,59 @@ const EXPENSE_CATEGORIES = [
   '其他'
 ];
 
-// 从文件读取账单
-function readFromFile() {
-  try {
-    if (!fs.existsSync(DATA_FILE)) {
-      return [];
-    }
-    const data = fs.readFileSync(DATA_FILE, 'utf-8');
-    return JSON.parse(data) || [];
-  } catch (error) {
-    console.error('读取账单文件失败:', error);
-    return [];
-  }
+// 初始化 lowdb
+async function initDb() {
+  const adapter = new JSONFile(DATA_FILE);
+  const db = new Low(adapter, { accounts: [] });
+  await db.read();
+  return db;
 }
 
-// 将账单写入文件
-function writeToFile(accounts) {
-  try {
-    fs.writeFileSync(DATA_FILE, JSON.stringify(accounts, null, 2), 'utf-8');
-    return true;
-  } catch (error) {
-    console.error('写入账单文件失败:', error);
-    return false;
+// 单例 db 实例
+let dbPromise = null;
+
+async function getDb() {
+  if (!dbPromise) {
+    dbPromise = initDb();
   }
+  return dbPromise;
+}
+
+// 同步版本，用于启动时初始化
+let dbInstance = null;
+
+export async function initializeDb() {
+  if (!dbInstance) {
+    dbInstance = await initDb();
+  }
+  return dbInstance;
 }
 
 // 获取所有账单
-function getAll() {
-  const accounts = readFromFile();
+export async function getAll() {
+  const db = await getDb();
+  if (!db.data.accounts) {
+    db.data.accounts = [];
+  }
+  const accounts = db.data.accounts || [];
   return accounts.sort((a, b) => new Date(b.date) - new Date(a.date));
 }
 
 // 获取单条账单
-function getById(id) {
-  const accounts = readFromFile();
-  return accounts.find(a => a.id === parseInt(id));
+export async function getById(id) {
+  const db = await getDb();
+  if (!db.data.accounts) {
+    db.data.accounts = [];
+  }
+  return db.data.accounts.find(a => a.id === parseInt(id));
 }
 
 // 添加账单
-function add(account) {
-  const accounts = readFromFile();
+export async function add(account) {
+  const db = await getDb();
+  if (!db.data.accounts) {
+    db.data.accounts = [];
+  }
   const newAccount = {
     id: Date.now(),
     date: account.date,
@@ -65,44 +80,52 @@ function add(account) {
     amount: parseFloat(account.amount),
     remark: account.remark || ''
   };
-  accounts.push(newAccount);
-  writeToFile(accounts);
+  db.data.accounts.push(newAccount);
+  await db.write();
   return newAccount;
 }
 
 // 更新账单
-function update(id, account) {
-  const accounts = readFromFile();
-  const index = accounts.findIndex(a => a.id === parseInt(id));
+export async function update(id, account) {
+  const db = await getDb();
+  if (!db.data.accounts) {
+    db.data.accounts = [];
+  }
+  const index = db.data.accounts.findIndex(a => a.id === parseInt(id));
   if (index === -1) {
     return null;
   }
-  accounts[index] = {
-    ...accounts[index],
+  db.data.accounts[index] = {
+    ...db.data.accounts[index],
     date: account.date,
     type: account.type,
     category: account.category || '',
     amount: parseFloat(account.amount),
     remark: account.remark || ''
   };
-  writeToFile(accounts);
-  return accounts[index];
+  await db.write();
+  return db.data.accounts[index];
 }
 
 // 删除账单
-function remove(id) {
-  const accounts = readFromFile();
-  const index = accounts.findIndex(a => a.id === parseInt(id));
+export async function remove(id) {
+  const db = await getDb();
+  if (!db.data.accounts) {
+    db.data.accounts = [];
+  }
+  const index = db.data.accounts.findIndex(a => a.id === parseInt(id));
   if (index === -1) {
     return false;
   }
-  accounts.splice(index, 1);
-  return writeToFile(accounts);
+  db.data.accounts.splice(index, 1);
+  await db.write();
+  return true;
 }
 
 // 获取统计数据
-function getStats() {
-  const accounts = readFromFile();
+export async function getStats() {
+  const db = await getDb();
+  const accounts = db.data.accounts || [];
 
   const totalIncome = accounts
     .filter(a => a.type === 'income')
@@ -120,8 +143,9 @@ function getStats() {
 }
 
 // 获取支出分类统计
-function getCategoryStats() {
-  const accounts = readFromFile();
+export async function getCategoryStats() {
+  const db = await getDb();
+  const accounts = db.data.accounts || [];
   const expenseAccounts = accounts.filter(a => a.type === 'expense');
 
   const stats = {};
@@ -133,13 +157,15 @@ function getCategoryStats() {
   return stats;
 }
 
-module.exports = {
-  getAll,
-  getById,
-  add,
-  update,
-  remove,
-  getStats,
-  getCategoryStats,
+// 同步版本 - 供路由直接调用（Express 会等待 promise）
+export const getAllSync = async (...args) => getAll(...args);
+export const getByIdSync = async (...args) => getById(...args);
+export const addSync = async (...args) => add(...args);
+export const updateSync = async (...args) => update(...args);
+export const removeSync = async (...args) => remove(...args);
+export const getStatsSync = async (...args) => getStats(...args);
+export const getCategoryStatsSync = async (...args) => getCategoryStats(...args);
+
+export {
   EXPENSE_CATEGORIES
 };

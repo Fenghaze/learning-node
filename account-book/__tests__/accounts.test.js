@@ -1,4 +1,4 @@
-const accounts = require('../data/accounts');
+import * as accounts from '../data/accounts.js';
 
 describe('账单数据模块', () => {
   const testAccount = {
@@ -10,22 +10,22 @@ describe('账单数据模块', () => {
   };
 
   describe('getStats()', () => {
-    it('应返回正确的统计对象结构', () => {
-      const stats = accounts.getStats();
+    it('应返回正确的统计对象结构', async () => {
+      const stats = await accounts.getStats();
       expect(stats).toHaveProperty('totalIncome');
       expect(stats).toHaveProperty('totalExpense');
       expect(stats).toHaveProperty('balance');
     });
 
-    it('余额应等于收入减去支出', () => {
-      const stats = accounts.getStats();
+    it('余额应等于收入减去支出', async () => {
+      const stats = await accounts.getStats();
       expect(stats.balance).toBe(stats.totalIncome - stats.totalExpense);
     });
   });
 
   describe('getCategoryStats()', () => {
-    it('应返回对象类型', () => {
-      const categoryStats = accounts.getCategoryStats();
+    it('应返回对象类型', async () => {
+      const categoryStats = await accounts.getCategoryStats();
       expect(typeof categoryStats).toBe('object');
     });
   });

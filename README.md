@@ -15,6 +15,15 @@
 - Formidable - 解析表单数据
 - Morgan - HTTP 日志中间件
 - Cookie-Parser - Cookie 解析
+- lowdb v7 - JSON 数据库（持久化存储）
+- Jest + Supertest - 测试框架
+
+**测试命令：**
+```bash
+npm test  # 运行所有测试（9 个测试，2 个测试套件）
+```
+
+**模块系统：** ESM（ECMAScript Modules），package.json 中设置 `"type": "module"`
 
 **功能特点：**
 - 页面渲染 (EJS 模板)
